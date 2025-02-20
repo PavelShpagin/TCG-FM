@@ -1,0 +1,17 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.4.1+cu121 
+torchvision==0.19.1+cu121 
+torchaudio==2.4.1+cu121
+
+git+https://github.com/huggingface/trl.git
+git+https://github.com/huggingface/accelerate.git
+git+https://github.com/huggingface/transformers.git
+
+peft
+bitsandbytes>=0.37.0
+wandb
+numba
+python-dotenv
+pyyaml
+pandas
+qwen-vl-utils 

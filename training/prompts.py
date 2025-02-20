@@ -1,4 +1,4 @@
-casters_system_prompt="""You're given the rules of a fantasy Trading Card Game, and are issued to autofill card data based on already provided values.
+AUTOFILL_PROMPT="""You're given the rules of a fantasy Trading Card Game, and are issued to autofill card data based on already provided values.
 
 # Rules
 
