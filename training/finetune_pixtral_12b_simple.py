@@ -24,6 +24,7 @@ from accelerate import Accelerator
 import wandb
 from huggingface_hub import notebook_login
 from dotenv import load_dotenv, dotenv_values
+from trl import SFTConfig, SFTTrainer
 
 # Import prompt definitions from prompts.py
 from prompts import AUTOFILL_PROMPT
@@ -159,74 +160,48 @@ def main():
         quantization_config=bnb_config,
     )
     
-    # Define optimizer, scheduler, and accelerator
-    optimizer = optim.AdamW(model.parameters(), lr=config.training.learning_rate, weight_decay=config.training.weight_decay)
-    
-    dataloader = DataLoader(training_dataset, batch_size=config.training.per_device_batch_size,
-                            collate_fn=lambda examples: collate_fn(examples, processor), shuffle=True)
-    
-    num_training_steps = int(len(dataloader) * config.training.num_train_epochs / config.training.gradient_accumulation_steps)
-    num_warmup_steps = math.ceil(num_training_steps * config.training.warmup_ratio)
-    
-    lr_scheduler = get_scheduler(
-        "constant",
-        optimizer,
-        num_warmup_steps=num_warmup_steps,
-        num_training_steps=num_training_steps
+    # Define training arguments using SFTConfig
+    training_args = SFTConfig(
+        output_dir=config.model.output_dir,
+        num_train_epochs=config.training.num_train_epochs,
+        per_device_train_batch_size=config.training.per_device_batch_size,
+        gradient_accumulation_steps=config.training.gradient_accumulation_steps,
+        gradient_checkpointing=config.training.gradient_checkpointing,
+        optim="adamw_torch_fused",
+        lr_scheduler_type="constant",
+        save_steps=config.logging.save_steps,
+        warmup_ratio=config.training.warmup_ratio,
+        logging_steps=config.logging.logging_steps,
+        learning_rate=config.training.learning_rate,
+        weight_decay=config.training.weight_decay,
+        max_grad_norm=config.training.max_grad_norm,
+        bf16=not config.training.fp16,
+        tf32=config.training.tf32,
+        use_liger=True,
+        push_to_hub=True,
+        report_to="wandb",
+        gradient_checkpointing_kwargs={"use_reentrant": False},
+        dataset_text_field="",
+        dataset_kwargs={"skip_prepare_dataset": True},
     )
-    
-    if config.training.tf32:
-        torch.backends.cuda.matmul.allow_tf32 = True
-    if config.training.gradient_checkpointing:
-        model.config.use_cache = False
-        model.gradient_checkpointing_enable()
-    
-    accelerator = Accelerator(mixed_precision="bf16" if not config.training.fp16 else "fp16")
-    
-    model = get_peft_model(model, lora_config)
-    model.enable_input_require_grads()
-    
-    model, optimizer, dataloader, lr_scheduler = accelerator.prepare(model, optimizer, dataloader, lr_scheduler)
-    
-    # Initialize GradScaler
-    scaler = torch.cuda.amp.GradScaler()
 
-    # Training Loop
-    model.train()
-    global_steps = 0
-    for epoch in range(config.training.num_train_epochs):
-        for step, batch in enumerate(dataloader):
-            with torch.cuda.amp.autocast():
-                outputs = model(**batch)
-                loss = outputs.loss / config.training.gradient_accumulation_steps
-            
-            # Scale the loss and call backward
-            scaler.scale(loss).backward()
-    
-            if (step + 1) % config.training.gradient_accumulation_steps == 0:
-                accelerator.clip_grad_norm_(model.parameters(), config.training.max_grad_norm)
-                
-                # Step the optimizer with the scaled gradients
-                scaler.step(optimizer)
-                scaler.update()
+    training_args.remove_unused_columns = False
 
-                # Update the learning rate scheduler
-                lr_scheduler.step()
-                
-                optimizer.zero_grad()
-                global_steps += 1
-    
-                if global_steps % config.logging.logging_steps == 0:
-                    accelerator.print(f"Epoch {epoch}, Step {global_steps}: Loss = {loss.item() * config.training.gradient_accumulation_steps:.4f}")
-                    wandb.log({"loss": loss.item() * config.training.gradient_accumulation_steps, "step": global_steps, "epoch": epoch})
-    
-                if global_steps % config.logging.save_steps == 0:
-                    accelerator.save_state(config.model.output_dir)
-    
-            del loss, outputs
-            torch.cuda.empty_cache()
-    
-    accelerator.print("Training complete.")
+    # Initialize SFTTrainer
+    trainer = SFTTrainer(
+        model,
+        args=training_args,
+        train_dataset=training_dataset,
+        peft_config=lora_config,
+        data_collator=lambda examples: collate_fn(examples, processor)
+    )
+
+    # Start training
+    trainer.train()
+
+    # Save the model
+    trainer.save_model(training_args.output_dir)
+    print("Training complete.")
 
 if __name__ == "__main__":
     main()
