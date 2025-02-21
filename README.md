@@ -6,18 +6,23 @@ This guide provides instructions for setting up your development environment and
 
 - Python 3.x
 - CUDA 12.1 compatible GPU
-- Lambda Labs account
-- SSH client (e.g., Terminal, PuTTY)
 
 ## Setting Up Virtual Environment
 
-1. **Create a Virtual Environment:**
+1. **Clone the Repository:**
+
+   ```bash
+   git clone https://github.com/PavelShpagin/TCG-FM.git
+   cd TCG-FM
+   ```
+
+2. **Create a Virtual Environment:**
 
    ```bash
    python3 -m venv myenv
    ```
 
-2. **Activate the Virtual Environment:**
+3. **Activate the Virtual Environment:**
 
    - On macOS/Linux:
      ```bash
@@ -28,54 +33,30 @@ This guide provides instructions for setting up your development environment and
      .\myenv\Scripts\activate
      ```
 
-3. **Install Required Packages:**
+4. **Run Setup Script:**
 
    ```bash
-   # Install PyTorch and dependencies
-   pip install -r requirements.txt
+   chmod +x scripts/setup.sh
+   bash scripts/setup.sh
    ```
 
-4. **Setup Environment Variables:**
-
-   Create a `.env` file in the project root:
+5. **Install HuggingFace CLI and login:**
    ```bash
-   cp .env.example .env
-   ```
-   Then edit `.env` with your actual tokens:
-   ```
-   HF_TOKEN=your_huggingface_token_here
-   WANDB_API_KEY=your_wandb_key_here
+   sudo apt-get install huggingface-cli
+   huggingface-cli login
    ```
 
-## Running Training
-
-1. **SSH to Lambda Labs Instance:**
+6. **Run Training:**
    ```bash
-   ssh <username>@<instance-ip>
+   chmod +x scripts/train.sh -s
+   bash scripts/train.sh
    ```
 
-2. **Clone and Setup:**
+7. **Upload to Hub:**
    ```bash
-   git clone <your-repo>
-   cd <your-repo>
-   python3 -m venv myenv
-   source myenv/bin/activate
-   pip install -r requirements.txt
+   chmod +x scripts/upload_hub.sh
+   ./scripts/upload_hub.sh --hf_token <your_huggingface_token_here>
    ```
-
-3. **Run Training:**
-   ```bash
-   chmod +x scripts/train.sh
-   ./scripts/train.sh
-   ```
-
-## Project Structure
-
-- `configs/` - YAML configuration files
-- `training/` - Training scripts
-- `data/` - Dataset files
-- `scripts/` - Utility scripts
-- `utils/` - Helper functions
 
 ## Configuration
 

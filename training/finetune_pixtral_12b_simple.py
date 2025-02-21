@@ -178,7 +178,6 @@ def main():
         bf16=not config.training.fp16,
         tf32=config.training.tf32,
         use_liger=True,
-        push_to_hub=True,
         report_to="wandb",
         gradient_checkpointing_kwargs={"use_reentrant": False},
         dataset_text_field="",
