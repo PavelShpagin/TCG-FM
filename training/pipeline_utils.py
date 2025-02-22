@@ -1,6 +1,7 @@
 import json
 import random
 import torch
+from prompts import AUTOFILL_PROMPT
 
 def randomly_empty_fields(input_dict, empty_prob=0.5):
     return {key: "" if random.random() > empty_prob else value for key, value in input_dict.items()}
@@ -22,7 +23,7 @@ def get_prompt(input_dict, autofill_prompt, training_dataset, examples=2):
     )
 
 def collate_fn(examples, processor):
-    texts = [get_prompt(example, autofill_prompt="", training_dataset=examples) for example in examples]
+    texts = [get_prompt(example, autofill_prompt=AUTOFILL_PROMPT, training_dataset=examples) for example in examples]
     images = [[example.get("img", "")] for example in examples]
     batch = processor(text=texts, images=images, return_tensors="pt", padding=True)
     labels = batch["input_ids"].clone()

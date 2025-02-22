@@ -1,0 +1,1 @@
+python -m unittest testing/test_collate.py
